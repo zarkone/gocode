@@ -56,6 +56,14 @@
   :type 'string
   :group 'go-autocomplete)
 
+(defcustom ac-go-add-source-option nil
+  "Add `-source' option to `gocode' command.
+
+This option enables deep anaylysis of project deps which will give full autocomplete
+but works much longer"
+  :type 'boolean
+  :group 'go-autocomplete)
+
 ;; Close gocode daemon at exit unless it was already running
 (eval-after-load "go-mode"
   '(progn
@@ -95,19 +103,20 @@
       result)))
 
 (defun ac-go-invoke-autocomplete ()
-  (let ((temp-buffer (generate-new-buffer "*gocode*")))
+  (let ((temp-buffer (generate-new-buffer "*gocode*"))
+        (args (nconc (list "-f=emacs")
+                     (when ac-go-add-source-option
+                       (list "-source"))
+                     (list "autocomplete" (buffer-file-name))
+                     (list "c" (int-to-string (- (point) 1))))))
     (unwind-protect
         (progn
-          (call-process-region (point-min)
-                               (point-max)
-                               ac-go-gocode-bin
-                               nil
-                               temp-buffer
-                               nil
-                               "-f=emacs"
-                               "autocomplete"
-                               (or (buffer-file-name) "")
-                               (concat "c" (int-to-string (- (point) 1))))
+          (apply 'call-process-region (point-min)
+                 (point-max)
+                 ac-go-gocode-bin
+                 nil
+                 temp-buffer
+                 args)
           (with-current-buffer temp-buffer (buffer-string)))
       (kill-buffer temp-buffer))))
 
